@@ -3,20 +3,38 @@ import { ref, unref, onMounted } from 'vue';
 
 const uploadBox = ref(null);
 const uploadVideoFile = ref(null);
+const uploadBoxText = ref(null);
 
 onMounted(() => {
-    const unrefUploadBox = unref(uploadBox);
-    const unrefUploadVideoFile = unref(uploadVideoFile);
+    const unrefUploadBox = unref(uploadBox),
+          unrefUploadVideoFile = unref(uploadVideoFile),
+          unrefUploadBoxText = unref(uploadBoxText),
 
-    const validVideoFormat = ['m4v', 'avi', 'mpg', 'mp4'];
+          validVideoFormat = ['m4v', 'avi', 'mpg', 'mp4'],
+          hoverClassName = 'hovered',
+          animationName = 'animate__shakeX';
+
+    const videoCheckSuccess = () => {
+        console.log("Success");
+    }
 
     const uploadedVideoCheck = () => {
         const fileExtension = unrefUploadVideoFile.files[0].name.split('.')[1];
 
-        if(unrefUploadVideoFile.files.length !== 1 || !validVideoFormat.includes(fileExtension)) return false;
-
-        return true;
+        if(unrefUploadVideoFile.files.length !== 1) {
+            unrefUploadBoxText.innerText = 'Too many files! Upload a video!';
+            unrefUploadBox.classList.add(animationName);
+        } else if(!validVideoFormat.includes(fileExtension)) {
+            unrefUploadBoxText.innerText = 'Upload a video!';
+            unrefUploadBox.classList.add(animationName);
+        } else {
+            videoCheckSuccess();
+        }
     }
+
+    unrefUploadBox.addEventListener('animationend', () => {
+        unrefUploadBox.classList.remove(animationName);
+    });
 
     unrefUploadBox.addEventListener('click', () => {
         unrefUploadVideoFile.click();
@@ -25,17 +43,17 @@ onMounted(() => {
     unrefUploadBox.addEventListener('dragover', e => {
         e.preventDefault();
 
-        unrefUploadBox.classList.add('hovered');
+        unrefUploadBox.classList.add(hoverClassName);
     });
 
     unrefUploadBox.addEventListener('dragleave', () => {
-        unrefUploadBox.classList.remove('hovered');
+        unrefUploadBox.classList.remove(hoverClassName);
     });
 
     unrefUploadBox.addEventListener('drop', e => {
         e.preventDefault();
 
-        unrefUploadBox.classList.remove('hovered');
+        unrefUploadBox.classList.remove(hoverClassName);
         unrefUploadVideoFile.files = e.dataTransfer.files;
         uploadedVideoCheck();
     });
@@ -48,8 +66,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <button class="upload-box" ref="uploadBox">
-        <h2 class="upload-box-text">Upload Video Here</h2>
+    <button class="upload-box animate__animated" ref="uploadBox">
+        <h2 class="upload-box-text" ref="uploadBoxText">Upload Video Here</h2>
         <div class="upload-box-x">
             <div class="box"></div>
         </div>
@@ -66,6 +84,7 @@ onMounted(() => {
             - the lines making up the +
         */
         --additional-size: 2px;
+        --animation-duration: 1s;
 
         width: min(60%, 600px);
         height: min(40%, 400px);
@@ -73,11 +92,13 @@ onMounted(() => {
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
+        translate: -50% -50%;
 
         background: none;
 
         cursor: pointer;
+
+        animation-duration: var(--animation-duration);    
     }
 
     .upload-box::before {
@@ -111,7 +132,7 @@ onMounted(() => {
         position: absolute;
         top: 15%;
         left: 50%;
-        transform: translate(-50%, -20%);
+        translate: -50% -20%;
 
         z-index: 2;
     }
@@ -135,7 +156,7 @@ onMounted(() => {
         position: absolute;
         top: 70%;
         left: 50%;
-        transform: translate(-50%, -70%);
+        translate: -50% -70%;
 
         border: 4px dashed white;
 
@@ -156,15 +177,14 @@ onMounted(() => {
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
+        translate: -50% -50%;
 
         border: var(--additional-size) solid white;
     }
 
     .box::after {
         top: 48%;
-        left: 35%;
-        transform: rotate(90deg);
+        rotate: 90deg;
     }
 
     #uploadVideoFile {
