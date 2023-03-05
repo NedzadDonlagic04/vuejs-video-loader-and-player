@@ -1,107 +1,97 @@
 <script setup>
-import { ref, unref, onMounted } from 'vue';
+import { ref, unref } from 'vue';
 
-const uploadBox = ref('');
-const uploadVideoFile = ref('');
-const uploadBoxText = ref('');
+const uploadBox = ref(''),
+      uploadVideoFile = ref(''),
+      uploadBoxText = ref(''),
+      
+      videoSrcEmit = defineEmits(['videoSrc']),
+      
+      validVideoFormat = ['m4v', 'avi', 'mpg', 'mp4'],
+      hoverClassName = 'hovered',
+      errorAnimationName = 'animate__shakeX',
+      moveLeftAnimationName = 'animate__backOutLeft';
 
-const videoSrcEmit = defineEmits(['videoSrc']);
+const toBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+});
 
-const initUploadBoxEvents = () => {
-    const unrefUploadBox = unref(uploadBox),
-          unrefUploadVideoFile = unref(uploadVideoFile),
-          unrefUploadBoxText = unref(uploadBoxText),
-
-          validVideoFormat = ['m4v', 'avi', 'mpg', 'mp4'],
-          hoverClassName = 'hovered',
-          errorAnimationName = 'animate__shakeX',
-          moveLeftAnimationName = 'animate__backOutLeft';
-    
-
-    // Function used to convert a file into base64
-    const toBase64 = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
-    /* 
-        Function that converts video to base64 by calling
-        the previously defined function
-    */
-    const convertVideoToBase64 = async () => {
-        try {
-            const result = await toBase64(unrefUploadVideoFile.files[0]);
-            videoSrcEmit('videoSrc', result);
-            unrefUploadBox.classList.add(moveLeftAnimationName);
-        } catch(error) {
-            console.error(error);
-        }
+/* 
+    Function that converts video to base64 by calling
+    the previously defined function
+*/
+const convertVideoToBase64 = async () => {
+    try {
+        const result = await toBase64(unref(uploadVideoFile).files[0]);
+        videoSrcEmit('videoSrc', result);
+        unref(uploadBox).classList.add(moveLeftAnimationName);
+    } catch(error) {
+        console.error(error);
     }
-
-    /* 
-        Function used to check is the uploaded video
-        following certain guidelines, those are:
-        - that only a single file is uploaded
-        - that the single file is a video
-    */
-    const uploadedVideoCheck = () => {
-        const fileExtension = unrefUploadVideoFile.files[0].name.split('.')[1];
-
-        if(unrefUploadVideoFile.files.length !== 1) {
-            unrefUploadBoxText.innerText = 'Too many files! Upload a video!';
-            unrefUploadBox.classList.add(errorAnimationName);
-        } else if(!validVideoFormat.includes(fileExtension)) {
-            unrefUploadBoxText.innerText = 'Upload a video!';
-            unrefUploadBox.classList.add(errorAnimationName);
-        } else {
-            convertVideoToBase64();
-        }
-    }
-
-    unrefUploadBox.addEventListener('animationend', () => {
-        unrefUploadBox.classList.remove(errorAnimationName);
-    });
-
-    unrefUploadBox.addEventListener('click', () => {
-        unrefUploadVideoFile.click();
-    });
-
-    unrefUploadBox.addEventListener('dragover', e => {
-        e.preventDefault();
-
-        unrefUploadBox.classList.add(hoverClassName);
-    });
-
-    unrefUploadBox.addEventListener('dragleave', () => {
-        unrefUploadBox.classList.remove(hoverClassName);
-    });
-
-    unrefUploadBox.addEventListener('drop', e => {
-        e.preventDefault();
-
-        unrefUploadBox.classList.remove(hoverClassName);
-        unrefUploadVideoFile.files = e.dataTransfer.files;
-        uploadedVideoCheck();
-    });
-
-    unrefUploadVideoFile.addEventListener('change', () => {
-        uploadedVideoCheck();
-    });
 }
 
-onMounted(initUploadBoxEvents);
+/* 
+    Function used to check is the uploaded video
+    following certain guidelines, those are:
+    - that only a single file is uploaded
+    - that the single file is a video
+*/
+const uploadedVideoCheck = () => {
+    const unrefUploadVideoFile = unref(uploadVideoFile),
+          unrefUploadBoxText = unref(uploadBoxText),
+          unrefUploadBox = unref(uploadBox);
 
+    const fileExtension = unrefUploadVideoFile.files[0].name.split('.').slice(-1)[0];
+
+    if(unrefUploadVideoFile.files.length !== 1) {
+        unrefUploadBoxText.innerText = 'Too many files! Upload a video!';
+        unrefUploadBox.classList.add(errorAnimationName);
+    } else if(!validVideoFormat.includes(fileExtension)) {
+        unrefUploadBoxText.innerText = 'Upload a video!';
+        unrefUploadBox.classList.add(errorAnimationName);
+    } else {
+        convertVideoToBase64();
+    }
+}
+
+const uploadBoxDropEvent = e => {
+    e.preventDefault();
+
+    unref(uploadBox).classList.remove(hoverClassName);
+    unref(uploadVideoFile).files = e.dataTransfer.files;
+    uploadedVideoCheck();
+}
+
+
+const uploadBoxAnimationEndEvent = e => e.target.classList.remove(errorAnimationName);
+
+const uploadBoxDragOverEvent = e => {
+    e.preventDefault();
+
+    unref(uploadBox).classList.add(hoverClassName);
+}
+
+const uploadBoxDragLeaveEvent = () => unref(uploadBox).classList.remove(hoverClassName);
 </script>
 
 <template>
-    <button class="upload-box animate__animated" ref="uploadBox">
+    <button class="upload-box animate__animated" ref="uploadBox"
+        @click="uploadVideoFile.click"
+        @animationend="uploadBoxAnimationEndEvent"
+        @dragover="uploadBoxDragOverEvent"
+        @dragleave="uploadBoxDragLeaveEvent"
+        @drop="uploadBoxDropEvent"
+    >
         <h2 class="upload-box-text" ref="uploadBoxText">Upload Video Here</h2>
         <div class="upload-box-x">
             <div class="box"></div>
         </div>
-        <input type="file" name="uploadVideoFile" id="uploadVideoFile" ref="uploadVideoFile" required>
+        <input type="file" name="uploadVideoFile" id="uploadVideoFile" ref="uploadVideoFile" required
+            @change="uploadedVideoCheck"    
+        >
     </button>
 </template>
 
