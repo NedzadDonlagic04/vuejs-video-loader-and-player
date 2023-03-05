@@ -1,36 +1,113 @@
 <script setup>
-import { watch, ref, unref, toRaw, onMounted  } from 'vue';
+import { watch, ref, unref, toRaw, reactive  } from 'vue';
 
-const props = defineProps(['src']);
 
-const videoElementContainer = ref('');
-const videoElement = ref('');
+const props = defineProps(['src']),
+      videoElementContainer = ref(''),
+      videoElement = ref('');
 
 watch(props, newSrc => {
-    const rawNewSrc = toRaw(newSrc),
-          unrefVideoElement = unref(videoElement),
-          unrefVideoElementContainer = unref(videoElementContainer);
+    const rawNewSrc = toRaw(newSrc);
 
-    if(rawNewSrc.src.length !== 0) {
-        unrefVideoElement.setAttribute('src', rawNewSrc.src);
-        unrefVideoElementContainer.classList.add('animate__backInRight');
-    }
+    unref(videoElement).setAttribute('src', rawNewSrc.src);
+    unref(videoElementContainer).classList.add('animate__backInRight');
 });
 
-const initVideoPlayerEvent = () => {
-    const unrefVideoElementContainer = unref(videoElementContainer);
+const videoElementContainerAnimationEndEvent = e => e.target.classList.add('blur-effect');
 
-    unrefVideoElementContainer.addEventListener('animationend', () => {
-        unrefVideoElementContainer.classList.add('blur-effect');
-    });
+
+const playPauseBtn = ref(''),
+      playPauseBtnState = ref(0),
+      videoState = reactive({
+            PLAY: 0,
+            PAUSE: 1,
+            RESTART: 2
+      });
+
+const playPauseVideoEvent = () => {
+    if(playPauseBtnState.value === toRaw(videoState).PAUSE) {
+        unref(videoElement).pause();
+        playPauseBtnState.value = toRaw(videoState).PLAY;
+    } else {
+        unref(videoElement).play();
+        playPauseBtnState.value = toRaw(videoState).PAUSE;
+    }
+}
+
+const videoEndedEvent = () => {
+    playPauseBtnState.value = toRaw(videoState).RESTART;
+}
+
+
+const videoDuration = ref(''),
+      currentTime = ref(''),
+      progress = ref(''),
+      progressBall = ref('');
+
+let videoLength;
+
+const convertTimeToStringFormat = time => {
+    let hours   = Math.floor(time / 3600);
+    let minutes = Math.floor((time - (hours * 3600)) / 60);
+    let seconds = Math.floor(time - (hours * 3600) - (minutes * 60));
+
+    if(hours < 10)  hours   = '0' + hours;
+    if(minutes < 10) minutes = '0' + minutes;
+    if(seconds < 10) seconds = '0' + seconds;
+    
+    if(hours !== '00') {
+        return hours + ':' + minutes + ':' + seconds;;
+    }
+
+    return minutes + ':' + seconds;
+}
+
+const videoLoadedMetaDataEvent = e => {
+    videoLength = e.target.duration;
+    unref(videoDuration).innerText = convertTimeToStringFormat(e.target.duration)
+};
+const videoTimeUpdateEvent = e => {
+    unref(currentTime).innerText = convertTimeToStringFormat(e.target.currentTime);
+
+    const seenVideoPercent = e.target.currentTime / videoLength * 100;
+
+    unref(progress).style.width = `${seenVideoPercent}%`;
+    unref(progressBall).style.left = `${seenVideoPercent}%`;
 };
 
-onMounted(initVideoPlayerEvent);
+
 </script>
 
 <template>
-    <div class="video-player animate__animated" ref="videoElementContainer">
-        <video ref="videoElement"></video>
+    <div class="video-player animate__animated" ref="videoElementContainer"
+        @animationend="videoElementContainerAnimationEndEvent"
+    >
+        <video :src="src" ref="videoElement"
+            @loadedmetadata="videoLoadedMetaDataEvent"
+            @timeupdate="videoTimeUpdateEvent"
+            @click="playPauseVideoEvent"
+            @ended="videoEndedEvent"
+        ></video>
+
+        <div class="controls">
+            <div class="progress-bar">
+                <div class="progress" ref="progress"></div>
+                <div class="progress-ball" ref="progressBall"></div>
+            </div>
+            <div class="options">
+                <button class="play-pause" ref="playPauseBtn"
+                    @click="playPauseVideoEvent"
+                >
+                    <img v-if="playPauseBtnState === videoState.PAUSE" src="./../assets/pause-icon.png" alt="pause icon">
+                    <img v-else-if="playPauseBtnState === videoState.PLAY" src="./../assets/play-icon.png" alt="play icon">
+                    <img v-else-if="playPauseBtnState === videoState.RESTART" src="./../assets/restart-icon.png" alt="restart icon">
+                </button>
+
+                <div class="video-duration">
+                    <p><span ref="currentTime">00:00</span> / <span ref="videoDuration">00:00</span></p>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -68,8 +145,6 @@ onMounted(initVideoPlayerEvent);
         left: calc(var(--additional-size) / -2);
 
         z-index: -1;
-
-        transition: all .5s ease;
     }
 
     .video-player.blur-effect::before {
@@ -83,5 +158,115 @@ onMounted(initVideoPlayerEvent);
         height: 100%;
 
         z-index: 1;
+    }
+
+    .controls {
+        --progress-bar-width: 90%;
+        --progress-bar-height: 3px;
+
+        position: absolute;
+        bottom: 0;
+        left: 0;
+
+        width: 100%;
+        height: min(4rem, 25%);
+        
+        opacity: 0;
+        
+        transition: opacity .5s ease;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 3px;
+
+        user-select: none;
+    }
+
+    .video-player:hover .controls{
+        opacity: 1;
+    }
+
+    .progress-bar {
+        --progress-color: red;
+        --progress-bar-bg-color: hsla(0, 100%, 100%, .8);
+
+        width: var(--progress-bar-width);
+        height: var(--progress-bar-height);
+
+        position: relative;
+        
+        background-color: var(--progress-bar-bg-color);
+
+        cursor: pointer;
+    }
+
+    .progress {
+        width: 0%;
+        /* ^ This indicates the progress */
+
+        height: 100%;
+        background-color: var(--progress-color);
+    }
+
+    .progress-ball {
+        --progress-ball-width: 10px;
+        --progress-ball-height: 10px;
+
+        width: var(--progress-ball-width);
+        height: var(--progress-ball-height);
+        border-radius: 50%;
+
+        background-color: var(--progress-color);
+
+        position: absolute;
+        top: calc(var(--progress-bar-height) / -1);
+        left: 0%;
+        /* ^ This indicates the progress */
+        translate: -50%;
+
+        opacity: 0;
+        transition: opacity .5s;
+    }
+
+    .controls:hover .progress-ball {
+        opacity: 1;
+    }
+
+    .options {
+        width: 100%;
+        height: 70%;
+        
+        padding: .4rem calc(50% - var(--progress-bar-width) / 2);
+        /*                ^ Calculates the padding needed on the sides so it matches
+                            the progress bar, it's supposed to be 100% of the width - whatever width the progress bar is
+                            and then all of that divided by 2 so the padding is on both sides                    
+        */
+
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .play-pause {
+        width: 5%;
+        height: 100%;
+
+        cursor: pointer;
+
+        background: none;
+        border: none;
+    }
+
+    .play-pause > img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .video-duration {
+        color: white;
+        font-weight: bolder;
+        font-size: 2.5vmin;
     }
 </style>
