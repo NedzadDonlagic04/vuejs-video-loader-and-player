@@ -28,6 +28,7 @@ const convertVideoToBase64 = async () => {
         const result = await toBase64(unref(uploadVideoFile).files[0]);
         videoSrcEmit('videoSrc', result);
         unref(uploadBox).classList.add(moveLeftAnimationName);
+        unref(uploadBox).blur();
     } catch(error) {
         console.error(error);
     }
@@ -65,6 +66,8 @@ const uploadBoxDropEvent = e => {
     uploadedVideoCheck();
 }
 
+const uploadBoxClickEvent = () => unref(uploadVideoFile).click();
+
 
 const uploadBoxAnimationEndEvent = e => e.target.classList.remove(errorAnimationName);
 
@@ -79,7 +82,7 @@ const uploadBoxDragLeaveEvent = () => unref(uploadBox).classList.remove(hoverCla
 
 <template>
     <button class="upload-box animate__animated" ref="uploadBox"
-        @click="uploadVideoFile.click"
+        @click="uploadBoxClickEvent"
         @animationend="uploadBoxAnimationEndEvent"
         @dragover="uploadBoxDragOverEvent"
         @dragleave="uploadBoxDragLeaveEvent"
