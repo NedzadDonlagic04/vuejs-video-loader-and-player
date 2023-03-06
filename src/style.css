@@ -15,11 +15,17 @@
 
 html {
     font-size: 16px;
-    overflow-x: hidden;
+}
+
+/* Setting the default behavior for images */
+img {
+    width: 100%;
+    height: 100%;
 }
 
 #app {
     min-height: 100vh;
     position: relative;
     background-color: var(--app-bg-color);
+    overflow: hidden;
 }
