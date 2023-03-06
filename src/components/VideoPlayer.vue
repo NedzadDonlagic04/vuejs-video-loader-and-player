@@ -86,7 +86,7 @@ const progressBar = ref('');
 let mouseDown = false;
 
 const mouseUpEvent = () => mouseDown = false;
-const mouseDownEvent = () => mouseDown = true;
+const mouseDownEvent = e => mouseDown = true;
 
 const mouseMoveEvent = e => {
     if(!mouseDown) return;
@@ -105,15 +105,9 @@ const progressBarClickEvent = e => {
     unref(videoElement).currentTime = percent * videoLength;
 
     percentFilledNum.value = percent * 100;
-
-    console.log(percentFilled.value);
 }
 
-const mouseLeaveEvent = e => {
-    mouseDown = false;
-
-    progressBarClickEvent(e);
-}
+const mouseLeaveEvent = () => mouseDown = false;
 
 
 const skipTime = 5;
@@ -142,13 +136,37 @@ const keyEvents = e => {
     }
 }
 
+
+const muted = ref(false),
+      volumeControl = ref(''),
+      audioControls = ref('');
+
+const audioBtnClick = () => {
+    unref(videoElement).volume = muted.value;
+    unref(volumeControl).value = (muted.value)? '100' : '0';
+    muted.value = !muted.value;
+}
+
+const volumeSliderChange = e => {
+    const volume = Number(e.target.value) / 100;
+
+    unref(videoElement).volume = volume;
+
+    if(volume !== 0) {
+        muted.value = false;
+    } else {
+        muted.value = true;
+    }
+}
+
 onMounted(() => {
     window.addEventListener('keydown', keyEvents);
 
     if((/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))) {
         unref(playPauseBtn).style.display = 'none';
+        unref(audioControls).style.display = 'none';
     }
-})
+});
 
 </script>
 
@@ -174,6 +192,7 @@ onMounted(() => {
                 <div class="progress" :style="{ width: percentFilled }"></div>
                 <div class="progress-ball" :style="{ left: percentFilled }" ref="progressBall"></div>
             </div>
+
             <div class="options">
                 <button class="play-pause" ref="playPauseBtn"
                     @click="playPauseVideoEvent"
@@ -185,6 +204,18 @@ onMounted(() => {
 
                 <div class="video-duration">
                     <p><span ref="currentTime">00:00</span> / <span ref="videoDuration">00:00</span></p>
+                </div>
+
+                <div class="audio-controls" ref="audioControls">
+                    <button class="audio-img"
+                        @click="audioBtnClick"
+                    >
+                        <img v-if="muted" src="./../assets/muted-icon.png" alt="muted icon">
+                        <img v-else src="./../assets/sound-icon.png" alt="sound icon">
+                    </button>
+                    <input type="range" name="volumeControl" id="volumeControl" ref="volumeControl" min="0" max="100" value="100" step="1"
+                        @input="volumeSliderChange"
+                    >
                 </div>
             </div>
         </div>
@@ -348,5 +379,28 @@ onMounted(() => {
         color: white;
         font-weight: bolder;
         font-size: 2.5vmin;
+    }
+
+    .audio-controls {
+        height: 100%;
+        margin-left: .4rem;
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+    }
+
+    .audio-img {
+        width: 20%;
+        height: 100%;
+
+        cursor: pointer;
+
+        background: none;
+        border: none;
+    }
+
+    .audio-controls input[type="range"] {
+        accent-color: white;
+        cursor: pointer;
     }
 </style>
