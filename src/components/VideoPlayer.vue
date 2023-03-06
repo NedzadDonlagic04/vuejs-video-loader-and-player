@@ -1,5 +1,5 @@
 <script setup>
-import { watch, ref, unref, toRaw, reactive  } from 'vue';
+import { watch, ref, unref, toRaw, reactive, onMounted, computed  } from 'vue';
 
 
 const props = defineProps(['src']),
@@ -40,9 +40,16 @@ const videoEndedEvent = () => {
 
 
 const videoDuration = ref(''),
-      currentTime = ref(''),
-      progress = ref(''),
-      progressBall = ref('');
+      currentTime = ref('');
+
+let percentFilledNum = ref(0); 
+const percentFilled = computed(() => {
+    if(unref(percentFilledNum) > 100) {
+        return '100%';
+    }
+
+    return `${unref(percentFilledNum)}%`;
+});
 
 let videoLength;
 
@@ -66,15 +73,82 @@ const videoLoadedMetaDataEvent = e => {
     videoLength = e.target.duration;
     unref(videoDuration).innerText = convertTimeToStringFormat(e.target.duration)
 };
+
 const videoTimeUpdateEvent = e => {
     unref(currentTime).innerText = convertTimeToStringFormat(e.target.currentTime);
 
-    const seenVideoPercent = e.target.currentTime / videoLength * 100;
-
-    unref(progress).style.width = `${seenVideoPercent}%`;
-    unref(progressBall).style.left = `${seenVideoPercent}%`;
+    percentFilledNum.value = e.target.currentTime / videoLength * 100;
 };
 
+
+const progressBar = ref('');
+
+let mouseDown = false;
+
+const mouseUpEvent = () => mouseDown = false;
+const mouseDownEvent = () => mouseDown = true;
+
+const mouseMoveEvent = e => {
+    if(!mouseDown) return;
+
+    progressBarClickEvent(e);
+}
+
+const progressBarClickEvent = e => {
+    if(playPauseBtnState.value === toRaw(videoState).RESTART || e.target.classList.contains('progress-ball')) return;
+
+    const progress = e.layerX,
+        fullWidth = unref(progressBar).offsetWidth;
+
+    let percent = progress / fullWidth;
+
+    unref(videoElement).currentTime = percent * videoLength;
+
+    percentFilledNum.value = percent * 100;
+
+    console.log(percentFilled.value);
+}
+
+const mouseLeaveEvent = e => {
+    mouseDown = false;
+
+    progressBarClickEvent(e);
+}
+
+
+const skipTime = 5;
+// ^ Represents how many seconds of a video we are skipping
+
+const keyEvents = e => {
+    if(!unref(videoElementContainer).classList.contains('animate__backInRight')) return;
+
+    const currentTime = unref(videoElement).currentTime,
+          unrefVideoElement = unref(videoElement);
+
+    switch(e.key) {
+        case 'ArrowRight': 
+            if(currentTime + skipTime > videoLength) unrefVideoElement.currentTime = videoLength;
+            else unrefVideoElement.currentTime = currentTime + skipTime;
+            break;
+        
+        case 'ArrowLeft':
+            if(currentTime - skipTime < 0) unrefVideoElement.currentTime = 0
+            else unrefVideoElement.currentTime = currentTime - skipTime;
+            break;
+
+        case ' ':
+            playPauseVideoEvent();
+            break;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', keyEvents);
+
+    if((/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))) {
+        unref(playPauseBtn).style.display = 'none';
+    }
+})
 
 </script>
 
@@ -90,17 +164,23 @@ const videoTimeUpdateEvent = e => {
         ></video>
 
         <div class="controls">
-            <div class="progress-bar">
-                <div class="progress" ref="progress"></div>
-                <div class="progress-ball" ref="progressBall"></div>
+            <div class="progress-bar" ref="progressBar"
+                @mousemove="mouseMoveEvent"
+                @mouseleave="mouseLeaveEvent"
+                @mousedown="mouseDownEvent"
+                @mouseup="mouseUpEvent"
+                @click="progressBarClickEvent"
+            >
+                <div class="progress" :style="{ width: percentFilled }"></div>
+                <div class="progress-ball" :style="{ left: percentFilled }" ref="progressBall"></div>
             </div>
             <div class="options">
                 <button class="play-pause" ref="playPauseBtn"
                     @click="playPauseVideoEvent"
                 >
-                    <img v-if="playPauseBtnState === videoState.PAUSE" src="./../assets/pause-icon.png" alt="pause icon">
-                    <img v-else-if="playPauseBtnState === videoState.PLAY" src="./../assets/play-icon.png" alt="play icon">
-                    <img v-else-if="playPauseBtnState === videoState.RESTART" src="./../assets/restart-icon.png" alt="restart icon">
+                    <img v-if="playPauseBtnState === videoState.PAUSE" src="./../assets/pause-icon.png" alt="pause icon" draggable="false">
+                    <img v-else-if="playPauseBtnState === videoState.PLAY" src="./../assets/play-icon.png" alt="play icon" draggable="false">
+                    <img v-else-if="playPauseBtnState === videoState.RESTART" src="./../assets/restart-icon.png" alt="restart icon" draggable="false">
                 </button>
 
                 <div class="video-duration">
@@ -130,6 +210,11 @@ const videoTimeUpdateEvent = e => {
         top: 50%;
         left: 50%;
         translate: -50% -50%;
+    }
+
+    .video-player.full-screen {
+        top: 100%;
+        left: 100%;
     }
 
     .video-player::before {
@@ -162,7 +247,7 @@ const videoTimeUpdateEvent = e => {
 
     .controls {
         --progress-bar-width: 90%;
-        --progress-bar-height: 3px;
+        --progress-bar-height: 8px;
 
         position: absolute;
         bottom: 0;
@@ -184,7 +269,7 @@ const videoTimeUpdateEvent = e => {
         user-select: none;
     }
 
-    .video-player:hover .controls{
+    .video-player:hover .controls {
         opacity: 1;
     }
 
@@ -211,8 +296,8 @@ const videoTimeUpdateEvent = e => {
     }
 
     .progress-ball {
-        --progress-ball-width: 10px;
-        --progress-ball-height: 10px;
+        --progress-ball-width: 17px;
+        --progress-ball-height: 17px;
 
         width: var(--progress-ball-width);
         height: var(--progress-ball-height);
@@ -221,7 +306,7 @@ const videoTimeUpdateEvent = e => {
         background-color: var(--progress-color);
 
         position: absolute;
-        top: calc(var(--progress-bar-height) / -1);
+        top: calc(var(--progress-bar-height) / -2);
         left: 0%;
         /* ^ This indicates the progress */
         translate: -50%;
@@ -257,11 +342,6 @@ const videoTimeUpdateEvent = e => {
 
         background: none;
         border: none;
-    }
-
-    .play-pause > img {
-        width: 100%;
-        height: 100%;
     }
 
     .video-duration {
