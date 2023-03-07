@@ -11,5 +11,5 @@ createApp(App).mount('#app');
 const link = document.querySelector('link[rel="icon"]');
 
 if(window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    link.href = '/video-player-icon-dark.png';
+    link.href = './video-player-icon-dark.png';
 }
