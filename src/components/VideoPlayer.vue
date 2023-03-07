@@ -44,9 +44,7 @@ const videoDuration = ref(''),
 
 let percentFilledNum = ref(0); 
 const percentFilled = computed(() => {
-    if(unref(percentFilledNum) > 100) {
-        return '100%';
-    }
+    if(unref(percentFilledNum) > 100) return '100%';
 
     return `${unref(percentFilledNum)}%`;
 });
@@ -62,16 +60,15 @@ const convertTimeToStringFormat = time => {
     if(minutes < 10) minutes = '0' + minutes;
     if(seconds < 10) seconds = '0' + seconds;
     
-    if(hours !== '00') {
-        return hours + ':' + minutes + ':' + seconds;;
-    }
+    if(hours !== '00') return hours + ':' + minutes + ':' + seconds;
 
     return minutes + ':' + seconds;
 }
 
 const videoLoadedMetaDataEvent = e => {
     videoLength = e.target.duration;
-    unref(videoDuration).innerText = convertTimeToStringFormat(e.target.duration)
+
+    unref(videoDuration).innerText = convertTimeToStringFormat(e.target.duration);
 };
 
 const videoTimeUpdateEvent = e => {
@@ -98,7 +95,7 @@ const progressBarClickEvent = e => {
     if(playPauseBtnState.value === toRaw(videoState).RESTART || e.target.classList.contains('progress-ball')) return;
 
     const progress = e.layerX,
-        fullWidth = unref(progressBar).offsetWidth;
+          fullWidth = unref(progressBar).offsetWidth;
 
     let percent = progress / fullWidth;
 
@@ -113,21 +110,30 @@ const mouseLeaveEvent = () => mouseDown = false;
 const skipTime = 5;
 // ^ Represents how many seconds of a video we are skipping
 
+const forward = () => {
+    const currentTime = unref(videoElement).currentTime,
+          unrefVideoElement = unref(videoElement);
+    
+    unrefVideoElement.currentTime = (currentTime + skipTime > videoLength)? videoLength : currentTime + skipTime;
+}
+
+const backward = () => {
+    const currentTime = unref(videoElement).currentTime,
+          unrefVideoElement = unref(videoElement);    
+    
+    unrefVideoElement.currentTime = (currentTime - skipTime < 0)? 0 : currentTime - skipTime;
+}
+
 const keyEvents = e => {
     if(!unref(videoElementContainer).classList.contains('animate__backInRight')) return;
 
-    const currentTime = unref(videoElement).currentTime,
-          unrefVideoElement = unref(videoElement);
-
     switch(e.key) {
         case 'ArrowRight': 
-            if(currentTime + skipTime > videoLength) unrefVideoElement.currentTime = videoLength;
-            else unrefVideoElement.currentTime = currentTime + skipTime;
+            forward();
             break;
         
         case 'ArrowLeft':
-            if(currentTime - skipTime < 0) unrefVideoElement.currentTime = 0
-            else unrefVideoElement.currentTime = currentTime - skipTime;
+            backward();
             break;
 
         case ' ':
@@ -152,19 +158,37 @@ const volumeSliderChange = e => {
 
     unref(videoElement).volume = volume;
 
-    if(volume !== 0) {
-        muted.value = false;
-    } else {
-        muted.value = true;
+    muted.value = (volume !== 0) ? false : true;
+}
+
+let tapedTwice = false,
+    tap1, tap2;
+
+const videoTouchEvent = e => {
+    e.preventDefault();
+
+    if(!tapedTwice) {
+        tapedTwice = true;
+        setTimeout(() => tapedTwice = false, 300);
+        tap1 = e.touches[0].clientX;
+        playPauseVideoEvent();
+        return;
     }
+
+    tap2 = e.touches[0].clientX;
+
+    const halfScreen = window.innerWidth / 2;
+
+    if(tap1 >= halfScreen && tap2 >= halfScreen) forward();
+    else if(tap1 <= halfScreen && tap2 <= halfScreen) backward();
 }
 
 onMounted(() => {
     window.addEventListener('keydown', keyEvents);
 
     if((/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))) {
-        unref(playPauseBtn).style.display = 'none';
         unref(audioControls).style.display = 'none';
+        unref(videoElementContainer).classList.add('mobile');
     }
 });
 
@@ -179,6 +203,7 @@ onMounted(() => {
             @timeupdate="videoTimeUpdateEvent"
             @click="playPauseVideoEvent"
             @ended="videoEndedEvent"
+            @touchstart="videoTouchEvent"
         ></video>
 
         <div class="controls">
@@ -187,6 +212,7 @@ onMounted(() => {
                 @mouseleave="mouseLeaveEvent"
                 @mousedown="mouseDownEvent"
                 @mouseup="mouseUpEvent"
+
                 @click="progressBarClickEvent"
             >
                 <div class="progress" :style="{ width: percentFilled }"></div>
@@ -300,7 +326,8 @@ onMounted(() => {
         user-select: none;
     }
 
-    .video-player:hover .controls {
+    .video-player:hover .controls,
+    .video-player.mobile .controls {
         opacity: 1;
     }
 
