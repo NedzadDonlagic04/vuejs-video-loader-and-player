@@ -25,13 +25,8 @@ const playPauseBtn = ref(''),
       });
 
 const playPauseVideoEvent = () => {
-    if(playPauseBtnState.value === toRaw(videoState).PAUSE) {
-        unref(videoElement).pause();
-        playPauseBtnState.value = toRaw(videoState).PLAY;
-    } else {
-        unref(videoElement).play();
-        playPauseBtnState.value = toRaw(videoState).PAUSE;
-    }
+    (playPauseBtnState.value === toRaw(videoState).PAUSE)? unref(videoElement).pause() : unref(videoElement).play();
+    playPauseBtnState.value = (playPauseBtnState.value === toRaw(videoState).PAUSE)? toRaw(videoState).PLAY : toRaw(videoState).PAUSE;
 }
 
 const videoEndedEvent = () => {
@@ -83,7 +78,7 @@ const progressBar = ref('');
 let mouseDown = false;
 
 const mouseUpEvent = () => mouseDown = false;
-const mouseDownEvent = e => mouseDown = true;
+const mouseDownEvent = () => mouseDown = true;
 
 const mouseMoveEvent = e => {
     if(!mouseDown) return;
