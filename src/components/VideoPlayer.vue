@@ -138,22 +138,26 @@ const keyEvents = e => {
 }
 
 
-const muted = ref(false),
+const volume = ref(1),
+      currVol = ref(1),
       volumeControl = ref(''),
       audioControls = ref('');
 
 const audioBtnClick = () => {
-    unref(videoElement).volume = muted.value;
-    unref(volumeControl).value = (muted.value)? '100' : '0';
-    muted.value = !muted.value;
+    const currentVolume = unref(volume);
+
+    unref(videoElement).volume = (unref(videoElement).volume != 0)? 0 : currentVolume;
+    unref(volumeControl).value = (unref(volumeControl).value != 0)? 0 : currentVolume * 100;
+    currVol.value = unref(videoElement).volume;
 }
 
 const volumeSliderChange = e => {
-    const volume = Number(e.target.value) / 100;
+    volume.value = Number(e.target.value) / 100;
 
-    unref(videoElement).volume = volume;
-
-    muted.value = (volume !== 0) ? false : true;
+    localStorage.setItem('volume', `{ "volume": ${volume.value} }`);
+    
+    unref(videoElement).volume = volume.value;
+    currVol.value = volume.value;
 }
 
 let tapedTwice = false,
@@ -184,6 +188,10 @@ onMounted(() => {
     if((/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))) {
         unref(audioControls).style.display = 'none';
         unref(videoElementContainer).classList.add('mobile');
+    } else if(localStorage.getItem('volume')) {
+        volume.value = (JSON.parse(localStorage.getItem('volume'))).volume;
+        unref(volumeControl).value = volume.value * 100;
+        currVol.value = volume.value;
     }
 });
 
@@ -231,8 +239,8 @@ onMounted(() => {
                     <button class="audio-img"
                         @click="audioBtnClick"
                     >
-                        <img v-if="muted" src="./../assets/muted-icon.png" alt="muted icon">
-                        <img v-else src="./../assets/sound-icon.png" alt="sound icon">
+                        <img v-if="currVol" src="./../assets/sound-icon.png" alt="sound icon">
+                        <img v-else src="./../assets/muted-icon.png" alt="muted icon">
                     </button>
                     <input type="range" name="volumeControl" id="volumeControl" ref="volumeControl" min="0" max="100" value="100" step="1"
                         @input="volumeSliderChange"
