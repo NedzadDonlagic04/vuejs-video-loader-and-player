@@ -89,7 +89,7 @@ const mouseMoveEvent = e => {
 const progressBarClickEvent = e => {
     if(playPauseBtnState.value === toRaw(videoState).RESTART || e.target.classList.contains('progress-ball')) return;
 
-    const progress = e.layerX,
+    const progress = e.offsetX,
           fullWidth = unref(progressBar).offsetWidth;
 
     let percent = progress / fullWidth;
